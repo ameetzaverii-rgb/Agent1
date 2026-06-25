@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduForge — Multi-Agent Content Development System</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0a0e1a; color: #e0e6f0; overflow-x: hidden; }
+
+  /* ---- HEADER ---- */
+  header {
+    background: linear-gradient(135deg, #1a1f35 0%, #0d1526 100%);
+    border-bottom: 1px solid #2a3a5c;
+    padding: 24px 40px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  header .logo { font-size: 28px; font-weight: 800; background: linear-gradient(90deg, #4f9cf9, #a78bfa, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  header .subtitle { font-size: 13px; color: #7a8aaa; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+
+  /* ---- LEGEND ---- */
+  .legend {
+    display: flex; gap: 24px; flex-wrap: wrap;
+    padding: 16px 40px;
+    background: #0d1220;
+    border-bottom: 1px solid #1e2a40;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #8a9ab8; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+  /* ---- MAIN CANVAS ---- */
+  .canvas { padding: 40px; display: flex; flex-direction: column; gap: 40px; }
+
+  /* ---- PHASE ROWS ---- */
+  .phase { position: relative; }
+  .phase-label {
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    color: #4f6a8a; margin-bottom: 12px; padding-left: 4px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .phase-label::after { content: ''; flex: 1; height: 1px; background: #1e2a40; }
+
+  .agents-row { display: flex; gap: 16px; flex-wrap: wrap; }
+
+  /* ---- AGENT CARD ---- */
+  .agent {
+    background: #111827;
+    border: 1px solid #1e2a40;
+    border-radius: 12px;
+    padding: 16px 18px;
+    width: 200px;
+    position: relative;
+    transition: all 0.25s ease;
+    cursor: pointer;
+  }
+  .agent:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .agent .agent-icon { font-size: 24px; margin-bottom: 8px; }
+  .agent .agent-name { font-size: 13px; font-weight: 700; color: #d0daf0; margin-bottom: 4px; }
+  .agent .agent-role { font-size: 11px; color: #5a6a88; line-height: 1.4; margin-bottom: 10px; }
+  .agent .agent-outputs { display: flex; flex-wrap: wrap; gap: 4px; }
+  .agent .tag {
+    font-size: 9px; letter-spacing: 0.5px; padding: 2px 7px;
+    border-radius: 20px; border: 1px solid;
+    text-transform: uppercase; font-weight: 600;
+  }
+  .agent .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    position: absolute; top: 14px; right: 14px;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+  /* colour themes per phase */
+  .research    { --accent: #4f9cf9; --tag-bg: rgba(79,156,249,0.08); --tag-border: rgba(79,156,249,0.35); }
+  .compliance  { --accent: #f9a84f; --tag-bg: rgba(249,168,79,0.08); --tag-border: rgba(249,168,79,0.35); }
+  .pedagogy    { --accent: #a78bfa; --tag-bg: rgba(167,139,250,0.08); --tag-border: rgba(167,139,250,0.35); }
+  .content     { --accent: #34d399; --tag-bg: rgba(52,211,153,0.08); --tag-border: rgba(52,211,153,0.35); }
+  .format      { --accent: #f472b6; --tag-bg: rgba(244,114,182,0.08); --tag-border: rgba(244,114,182,0.35); }
+  .publish     { --accent: #fb923c; --tag-bg: rgba(251,146,60,0.08); --tag-border: rgba(251,146,60,0.35); }
+  .marketing   { --accent: #22d3ee; --tag-bg: rgba(34,211,238,0.08); --tag-border: rgba(34,211,238,0.35); }
+  .orchestrate { --accent: #fbbf24; --tag-bg: rgba(251,191,36,0.08); --tag-border: rgba(251,191,36,0.35); }
+
+  .tag { background: var(--tag-bg); border-color: var(--tag-border); color: var(--accent); }
+
+  /* ---- FLOW ARROWS (SVG) ---- */
+  .flow-arrow {
+    display: flex; align-items: center; justify-content: center;
+    padding: 4px 0; color: #2a3a5c; font-size: 22px;
+  }
+
+  /* ---- OUTPUT COLUMN ---- */
+  .output-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    padding: 24px;
+    background: #0d1220;
+    border-radius: 16px;
+    border: 1px solid #1e2a40;
+  }
+  .output-card {
+    background: #111827;
+    border-radius: 10px;
+    padding: 16px;
+    border-left: 3px solid var(--c);
+  }
+  .output-card .oc-title { font-size: 12px; font-weight: 700; color: #c0cce0; margin-bottom: 6px; }
+  .output-card .oc-list { font-size: 11px; color: #5a6a88; line-height: 1.8; }
+
+  /* ---- ORCHESTRATOR BOX ---- */
+  .orchestrator-wrap {
+    display: flex; justify-content: center; padding: 16px 0;
+  }
+  .orchestrator {
+    background: linear-gradient(135deg, #1e2a3a, #1a1f30);
+    border: 2px solid #fbbf24;
+    border-radius: 16px;
+    padding: 20px 32px;
+    text-align: center;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 0 32px rgba(251,191,36,0.15);
+  }
+  .orchestrator .o-icon { font-size: 32px; margin-bottom: 8px; }
+  .orchestrator .o-name { font-size: 16px; font-weight: 800; color: #fbbf24; margin-bottom: 6px; }
+  .orchestrator .o-desc { font-size: 12px; color: #7a8aaa; line-height: 1.6; }
+  .orchestrator .o-badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+  .o-badge { font-size: 10px; padding: 3px 10px; border-radius: 20px; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.35); color: #fbbf24; font-weight: 600; }
+
+  /* ---- SECTION TITLE ---- */
+  .section-title {
+    font-size: 18px; font-weight: 700; color: #c0d0f0;
+    padding: 0 0 4px 0;
+    border-bottom: 1px solid #1e2a40;
+    margin-bottom: 20px;
+  }
+  .section-sub { font-size: 12px; color: #4a5a78; margin-top: 4px; font-weight: 400; }
+
+  /* ---- DATA FLOW DIAGRAM ---- */
+  .dataflow {
+    display: flex; align-items: stretch; gap: 0;
+    overflow-x: auto; padding-bottom: 8px;
+  }
+  .df-step {
+    display: flex; flex-direction: column;
+    align-items: center; min-width: 130px;
+  }
+  .df-box {
+    background: #111827; border: 1px solid #2a3a5c;
+    border-radius: 10px; padding: 12px 10px;
+    text-align: center; font-size: 11px; font-weight: 600;
+    color: #c0d0f0; width: 110px;
+    border-top: 2px solid var(--c);
+  }
+  .df-connector {
+    display: flex; align-items: center; padding-top: 28px;
+    color: #2a3a5c; font-size: 18px; min-width: 30px;
+    justify-content: center;
+  }
+
+  /* ---- SCORM / PLATFORM GRID ---- */
+  .platform-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+  }
+  @media (max-width: 700px) { .platform-grid { grid-template-columns: 1fr; } }
+  .platform-card {
+    background: #111827; border-radius: 12px; padding: 18px;
+    border: 1px solid #1e2a40;
+    border-top: 3px solid var(--c);
+  }
+  .platform-card .pc-icon { font-size: 22px; margin-bottom: 8px; }
+  .platform-card .pc-name { font-size: 13px; font-weight: 700; color: #c0d0f0; margin-bottom: 6px; }
+  .platform-card .pc-desc { font-size: 11px; color: #5a6a88; line-height: 1.6; }
+
+  /* scroll hint */
+  .scroll-hint { font-size: 11px; color: #2a3a5c; text-align: right; padding: 4px 0; }
+
+  hr { border: none; border-top: 1px solid #1e2a40; margin: 0; }
+
+  .badge-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .badge { font-size:10px; padding:3px 10px; border-radius:20px; font-weight:600; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">EduForge AI</div>
+    <div class="subtitle">Multi-Agent Content Development System</div>
+  </div>
+</header>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#4f9cf9"></div> Phase 1 · Research & Strategy</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f9a84f"></div> Phase 2 · Compliance Mapping</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div> Phase 3 · Pedagogy & Framework</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div> Phase 4 · Content Generation</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f472b6"></div> Phase 5 · Format & Package</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div> Phase 6 · Publish & Deploy</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div> Phase 7 · Marketing</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div> Orchestrator</div>
+</div>
+
+<div class="canvas">
+
+  <!-- ===== ORCHESTRATOR ===== -->
+  <div>
+    <div class="section-title">Master Orchestrator<span class="section-sub"> — routes tasks, resolves conflicts, triggers sub-agents, and monitors quality gates</span></div>
+    <div class="orchestrator-wrap">
+      <div class="orchestrator orchestrate">
+        <div class="o-icon">🧠</div>
+        <div class="o-name">CHIEF ORCHESTRATOR AGENT</div>
+        <div class="o-desc">Ingests the requirement brief (course vs. textbook supplement), decomposes it into a directed task graph, assigns agents in each phase, monitors progress, resolves conflicts between outputs, and gates the next phase on quality review.</div>
+        <div class="o-badges">
+          <span class="o-badge">Task Graph Engine</span>
+          <span class="o-badge">Quality Gate</span>
+          <span class="o-badge">Memory Store</span>
+          <span class="o-badge">Conflict Resolver</span>
+          <span class="o-badge">Progress Monitor</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr/>
+
+  <!-- ===== PHASE 1 ===== -->
+  <div class="phase">
+    <div class="phase-label">Phase 1 &nbsp;·&nbsp; Research &amp; Market Strategy</div>
+    <div class="agents-row">
+
+      <div class="agent research">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🔍</div>
+        <div class="agent-name">Market Intel Agent</div>
+        <div class="agent-role">Analyses learning need, target demographic, competitor courses, pricing, and demand signals.</div>
+        <div class="agent-outputs">
+          <span class="tag">Need Analysis</span>
+          <span class="tag">Competitor Map</span>
+          <span class="tag">Demand Report</span>
+        </div>
+      </div>
+
+      <div class="agent research">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🎯</div>
+        <div class="agent-name">Audience Profiler</div>
+        <div class="agent-role">Builds learner personas: age group, prior knowledge, learning styles, school tier, urban/rural split.</div>
+        <div class="agent-outputs">
+          <span class="tag">Personas</span>
+          <span class="tag">Readiness Map</span>
+        </div>
+      </div>
+
+      <div class="agent research">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🎨</div>
+        <div class="agent-name">Style &amp; Design Strategist</div>
+        <div class="agent-role">Recommends visual language, tone of voice, course design philosophy, and instructional style.</div>
+        <div class="agent-outputs">
+          <span class="tag">Design Brief</span>
+          <span class="tag">Tone Guide</span>
+        </div>
+      </div>
+
+      <div class="agent research">
+        <div class="status-dot"></div>
+        <div class="agent-icon">📊</div>
+        <div class="agent-name">Pricing &amp; Format Agent</div>
+        <div class="agent-role">Models delivery formats (offline, hybrid, online, bootcamp) and pricing strategy for schools.</div>
+        <div class="agent-outputs">
+          <span class="tag">Format Matrix</span>
+          <span class="tag">Pricing Model</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="flow-arrow">▼</div>
+
+  <!-- ===== PHASE 2 ===== -->
+  <div class="phase">
+    <div class="phase-label">Phase 2 &nbsp;·&nbsp; Compliance &amp; Standards Mapping</div>
+    <div class="agents-row">
+
+      <div class="agent compliance">
+        <div class="status-dot"></div>
+        <div class="agent-icon">📋</div>
+        <div class="agent-name">NEP 2020 Mapper</div>
+        <div class="agent-role">Maps course objectives to NEP 2020 competencies, foundational literacy, and 21st-century skills.</div>
+        <div class="agent-outputs">
+          <span class="tag">NEP Alignment</span>
+          <span class="tag">Competency Tags</span>
+        </div>
+      </div>
+
+      <div class="agent compliance">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🏫</div>
+        <div class="agent-name">CBSE / NCF Agent</div>
+        <div class="agent-role">Aligns learning outcomes with CBSE syllabus, NCF framework, and board-specific requirements.</div>
+        <div class="agent-outputs">
+          <span class="tag">Syllabus Map</span>
+          <span class="tag">LO Tags</span>
+          <span class="tag">Board Fit</span>
+        </div>
+      </div>
+
+      <div class="agent compliance">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🌐</div>
+        <div class="agent-name">SCORM / xAPI Compliance Agent</div>
+        <div class="agent-role">Enforces SCORM 1.2 / 2004 and xAPI packaging rules for global LMS distribution.</div>
+        <div class="agent-outputs">
+          <span class="tag">SCORM Schema</span>
+          <span class="tag">xAPI Verbs</span>
+        </div>
+      </div>
+
+      <div class="agent compliance">
+        <div class="status-dot"></div>
+        <div class="agent-icon">♿</div>
+        <div class="agent-name">Accessibility Agent</div>
+        <div class="agent-role">Checks WCAG 2.1 AA, alt-text, reading levels, and multilingual scaffold requirements.</div>
+        <div class="agent-outputs">
+          <span class="tag">A11y Report</span>
+          <span class="tag">Lang Scaffold</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="flow-arrow">▼</div>
+
+  <!-- ===== PHASE 3 ===== -->
+  <div class="phase">
+    <div class="phase-label">Phase 3 &nbsp;·&nbsp; Pedagogy &amp; Framework Design</div>
+    <div class="agents-row">
+
+      <div class="agent pedagogy">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🧩</div>
+        <div class="agent-name">Curriculum Architect</div>
+        <div class="agent-role">Designs module structure, scope &amp; sequence, learning pathways, and prerequisite graph.</div>
+        <div class="agent-outputs">
+          <span class="tag">Scope &amp; Seq.</span>
+          <span class="tag">Module Map</span>
+        </div>
+      </div>
+
+      <div class="agent pedagogy">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🧠</div>
+        <div class="agent-name">Learning Science Agent</div>
+        <div class="agent-role">Selects pedagogy: Bloom's taxonomy levels, constructivism, inquiry-based, project-based, spaced repetition.</div>
+        <div class="agent-outputs">
+          <span class="tag">Pedagogy Plan</span>
+          <span class="tag">Bloom Map</span>
+        </div>
+      </div>
+
+      <div class="agent pedagogy">
+        <div class="status-dot"></div>
+        <div class="agent-icon">📐</div>
+        <div class="agent-name">Assessment Framework Agent</div>
+        <div class="agent-role">Designs formative and summative assessment strategy, rubrics schema, and mastery thresholds.</div>
+        <div class="agent-outputs">
+          <span class="tag">Rubrics Schema</span>
+          <span class="tag">Assessment Plan</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="flow-arrow">▼</div>
+
+  <!-- ===== PHASE 4 ===== -->
+  <div class="phase">
+    <div class="phase-label">Phase 4 &nbsp;·&nbsp; Content Generation (parallel sub-agents)</div>
+    <div class="agents-row">
+
+      <div class="agent content">
+        <div class="status-dot"></div>
+        <div class="agent-icon">📖</div>
+        <div class="agent-name">Reading Material Agent</div>
+        <div class="agent-role">Writes chapter text, explanations, examples, case studies, and analogies.</div>
+        <div class="agent-outputs">
+          <span class="tag">Chapters</span>
+          <span class="tag">Case Studies</span>
+        </div>
+      </div>
+
+      <div class="agent content">
+        <div class="status-dot"></div>
+        <div class="agent-icon">✏️</div>
+        <div class="agent-name">Exercise Designer</div>
+        <div class="agent-role">Generates graded exercises, MCQs, short answer, numericals, and project prompts.</div>
+        <div class="agent-outputs">
+          <span class="tag">Exercise Bank</span>
+          <span class="tag">Answer Keys</span>
+        </div>
+      </div>
+
+      <div class="agent content">
+        <div class="status-dot"></div>
+        <div class="agent-icon">👩‍🏫</div>
+        <div class="agent-name">Teacher Material Agent</div>
+        <div class="agent-role">Builds lesson plans, slide decks, teacher notes, discussion guides, and assessment rubrics.</div>
+        <div class="agent-outputs">
+          <span class="tag">Lesson Plans</span>
+          <span class="tag">Slide Decks</span>
+          <span class="tag">Rubrics</span>
+        </div>
+      </div>
+
+      <div class="agent content">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🎒</div>
+        <div class="agent-name">Student Material Agent</div>
+        <div class="agent-role">Produces worksheets, activity sheets, lab guides, take-home projects, and reading logs.</div>
+        <div class="agent-outputs">
+          <span class="tag">Worksheets</span>
+          <span class="tag">Activity Kits</span>
+        </div>
+      </div>
+
+      <div class="agent content">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🏆</div>
+        <div class="agent-name">Challenges &amp; Bootcamp Agent</div>
+        <div class="agent-role">Creates challenge problem sets, hackathon briefs, bootcamp schedules, and online competition structures.</div>
+        <div class="agent-outputs">
+          <span class="tag">Challenge Bank</span>
+          <span class="tag">Bootcamp Kit</span>
+        </div>
+      </div>
+
+      <div class="agent content">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🤖</div>
+        <div class="agent-name">AI Tutor Script Agent</div>
+        <div class="agent-role">Authors dialogue trees, hint sequences, and misconception responses for the AI bot learning platform.</div>
+        <div class="agent-outputs">
+          <span class="tag">Bot Dialogues</span>
+          <span class="tag">Hint Trees</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="flow-arrow">▼</div>
+
+  <!-- ===== PHASE 5 ===== -->
+  <div class="phase">
+    <div class="phase-label">Phase 5 &nbsp;·&nbsp; Format, Package &amp; QA</div>
+    <div class="agents-row">
+
+      <div class="agent format">
+        <div class="status-dot"></div>
+        <div class="agent-icon">📦</div>
+        <div class="agent-name">SCORM Packager</div>
+        <div class="agent-role">Wraps content into SCORM 2004 / xAPI packages with imsmanifest, metadata, and sequencing rules.</div>
+        <div class="agent-outputs">
+          <span class="tag">SCORM Zip</span>
+          <span class="tag">xAPI Package</span>
+        </div>
+      </div>
+
+      <div class="agent format">
+        <div class="status-dot"></div>
+        <div class="agent-icon">📱</div>
+        <div class="agent-name">Multi-Format Renderer</div>
+        <div class="agent-role">Exports to PDF (print-ready), EPUB, interactive HTML5, and mobile-responsive web modules.</div>
+        <div class="agent-outputs">
+          <span class="tag">PDF</span>
+          <span class="tag">EPUB</span>
+          <span class="tag">HTML5</span>
+        </div>
+      </div>
+
+      <div class="agent format">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🔍</div>
+        <div class="agent-name">QA &amp; Review Agent</div>
+        <div class="agent-role">Fact-checks content, checks pedagogical consistency, validates compliance tags, and flags gaps.</div>
+        <div class="agent-outputs">
+          <span class="tag">QA Report</span>
+          <span class="tag">Gap List</span>
+        </div>
+      </div>
+
+      <div class="agent format">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🎨</div>
+        <div class="agent-name">Visual Assets Agent</div>
+        <div class="agent-role">Generates diagrams, infographics, icon sets, and branded cover art using image generation APIs.</div>
+        <div class="agent-outputs">
+          <span class="tag">Diagrams</span>
+          <span class="tag">Covers</span>
+          <span class="tag">Icons</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="flow-arrow">▼</div>
+
+  <!-- ===== PHASE 6 ===== -->
+  <div class="phase">
+    <div class="phase-label">Phase 6 &nbsp;·&nbsp; Publish &amp; Deploy</div>
+    <div class="agents-row">
+
+      <div class="agent publish">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🚀</div>
+        <div class="agent-name">Portal Publisher Agent</div>
+        <div class="agent-role">Uploads packages to your portal via API, sets access controls, pricing tiers, and course metadata.</div>
+        <div class="agent-outputs">
+          <span class="tag">Live Course URL</span>
+          <span class="tag">Access Rules</span>
+        </div>
+      </div>
+
+      <div class="agent publish">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🌍</div>
+        <div class="agent-name">LMS Distribution Agent</div>
+        <div class="agent-role">Pushes SCORM packages to partner LMS platforms (Moodle, Canvas, Schoology) via LTI/SCORM API.</div>
+        <div class="agent-outputs">
+          <span class="tag">LMS Push</span>
+          <span class="tag">LTI Links</span>
+        </div>
+      </div>
+
+      <div class="agent publish">
+        <div class="status-dot"></div>
+        <div class="agent-icon">🤖</div>
+        <div class="agent-name">AI Bot Deployer</div>
+        <div class="agent-role">Deploys the AI tutor bot with its knowledge base and dialogue scripts to the learning platform.</div>
+        <div class="agent-outputs">
+          <span class="tag">Bot Live</span>
+          <span class="tag">KB Index</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="flow-arrow">▼</div>
+
+  <!-- ===== PHASE 7 ===== -->
+  <div class="phase">
+    <div class="phase-label">Phase 7 &nbsp;·&nbsp; Marketing &amp; Outreach</div>
+    <div class="agents-row">
+
+      <div class="agent marketing">
+        <div class="status-dot"></div>
+        <div class="agent-icon">📣</div>
+        <div class="agent-name">School Outreach Agent</div>
+        <div class="agent-role">Drafts school proposal decks, brochures, sample chapters, and pricing sheets for B2B outreach.</div>
+        <div class="agent-outputs">
+          <span class="tag">Proposals</span>
+          <span class="tag">Brochures</span>
+        </div>
+      </div>
+
+      <div class="agent marketing">
+        <div class="status-dot"></div>
+        <div class="agent-icon">📱</div>
+        <div class="agent-name">Social &amp; Ad Agent</div>
+        <div class="agent-role">Generates ad copy, social posts, carousel content, and A/B test variants for Google, Meta, LinkedIn.</div>
+        <div class="agent-outputs">
+          <span class="tag">Ad Copy</span>
+          <span class="tag">Social Posts</span>
+          <span class="tag">A/B Variants</span>
+        </div>
+      </div>
+
+      <div class="agent marketing">
+        <div class="status-dot"></div>
+        <div class="agent-icon">📧</div>
+        <div class="agent-name">Email Campaign Agent</div>
+        <div class="agent-role">Writes nurture sequences, school newsletters, and parent/teacher outreach email campaigns.</div>
+        <div class="agent-outputs">
+          <span class="tag">Email Sequences</span>
+          <span class="tag">Newsletters</span>
+        </div>
+      </div>
+
+      <div class="agent marketing">
+        <div class="status-dot"></div>
+        <div class="agent-icon">📈</div>
+        <div class="agent-name">Analytics &amp; SEO Agent</div>
+        <div class="agent-role">Monitors course page SEO, sets up UTM tracking, generates performance dashboards, and suggests improvements.</div>
+        <div class="agent-outputs">
+          <span class="tag">SEO Report</span>
+          <span class="tag">UTM Setup</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <hr/>
+
+  <!-- ===== OUTPUT DELIVERABLES ===== -->
+  <div>
+    <div class="section-title">Final Output Deliverables<span class="section-sub"> — produced autonomously, ready to publish</span></div>
+    <div class="output-grid">
+
+      <div class="output-card" style="--c:#4f9cf9">
+        <div class="oc-title">🏫 Offline / Classroom Course</div>
+        <div class="oc-list">Print-ready PDFs · Teacher kit · Worksheets · Assessment rubrics · Lesson plans</div>
+      </div>
+
+      <div class="output-card" style="--c:#a78bfa">
+        <div class="oc-title">🔀 Hybrid Program</div>
+        <div class="oc-list">Blended schedule · Online modules + offline activities · Facilitation guide</div>
+      </div>
+
+      <div class="output-card" style="--c:#34d399">
+        <div class="oc-title">💻 Full Online Program</div>
+        <div class="oc-list">HTML5 interactive modules · Video scripts · Self-paced navigation · Progress tracking</div>
+      </div>
+
+      <div class="output-card" style="--c:#f472b6">
+        <div class="oc-title">📦 SCORM / xAPI Package</div>
+        <div class="oc-list">SCORM 2004 zip · xAPI statements · imsmanifest · LMS-ready for global distribution</div>
+      </div>
+
+      <div class="output-card" style="--c:#fb923c">
+        <div class="oc-title">🏆 Challenges &amp; Bootcamps</div>
+        <div class="oc-list">Online challenge bank · Leaderboard config · Bootcamp schedule · Judge rubrics</div>
+      </div>
+
+      <div class="output-card" style="--c:#fbbf24">
+        <div class="oc-title">🤖 AI Tutor Bot</div>
+        <div class="oc-list">Dialogue scripts · Knowledge base · Misconception handlers · Hint sequences</div>
+      </div>
+
+      <div class="output-card" style="--c:#22d3ee">
+        <div class="oc-title">📣 Marketing Collateral</div>
+        <div class="oc-list">School proposals · Ad creatives · Social posts · Email sequences · SEO pages</div>
+      </div>
+
+      <div class="output-card" style="--c:#f9a84f">
+        <div class="oc-title">📊 Compliance Certificates</div>
+        <div class="oc-list">NEP 2020 alignment · CBSE/NCF map · WCAG A11y report · Board-wise fit</div>
+      </div>
+
+    </div>
+  </div>
+
+  <hr/>
+
+  <!-- ===== PLATFORM TARGETS ===== -->
+  <div>
+    <div class="section-title">Delivery Platforms<span class="section-sub"> — where agents publish directly</span></div>
+    <div class="platform-grid">
+
+      <div class="platform-card" style="--c:#4f9cf9">
+        <div class="pc-icon">🏠</div>
+        <div class="pc-name">Your Own Portal</div>
+        <div class="pc-desc">Direct API publish · Course catalog · School login · Subscription management · Progress dashboards</div>
+      </div>
+
+      <div class="platform-card" style="--c:#34d399">
+        <div class="pc-icon">🌐</div>
+        <div class="pc-name">Global LMS Network</div>
+        <div class="pc-desc">Moodle · Canvas · Schoology · Google Classroom via LTI 1.3 and SCORM API</div>
+      </div>
+
+      <div class="platform-card" style="--c:#a78bfa">
+        <div class="pc-icon">🤖</div>
+        <div class="pc-name">AI Learning Platform</div>
+        <div class="pc-desc">Claude / GPT-powered tutor bot · Adaptive hints · Socratic dialogue · Misconception detection</div>
+      </div>
+
+      <div class="platform-card" style="--c:#f472b6">
+        <div class="pc-icon">🏆</div>
+        <div class="pc-name">Challenge &amp; Bootcamp Hub</div>
+        <div class="pc-desc">Online competition portal · Time-boxed challenges · School leaderboards · Certificate engine</div>
+      </div>
+
+      <div class="platform-card" style="--c:#22d3ee">
+        <div class="pc-icon">📣</div>
+        <div class="pc-name">Marketing Channels</div>
+        <div class="pc-desc">Google Ads · Meta · LinkedIn · Email (Mailchimp/SendGrid) · School CRM</div>
+      </div>
+
+      <div class="platform-card" style="--c:#fb923c">
+        <div class="pc-icon">📱</div>
+        <div class="pc-name">Mobile App</div>
+        <div class="pc-desc">Offline-first React Native shell · Downloads SCORM for offline study · Sync on reconnect</div>
+      </div>
+
+    </div>
+  </div>
+
+  <hr/>
+
+  <!-- ===== AGENT COUNT SUMMARY ===== -->
+  <div>
+    <div class="section-title">System Summary</div>
+    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:16px; margin-top:4px;">
+      <div style="background:#111827; border-radius:10px; padding:16px; text-align:center; border:1px solid #1e2a40;">
+        <div style="font-size:32px; font-weight:800; color:#4f9cf9;">21</div>
+        <div style="font-size:11px; color:#5a6a88; margin-top:4px;">Specialist Agents</div>
+      </div>
+      <div style="background:#111827; border-radius:10px; padding:16px; text-align:center; border:1px solid #1e2a40;">
+        <div style="font-size:32px; font-weight:800; color:#34d399;">7</div>
+        <div style="font-size:11px; color:#5a6a88; margin-top:4px;">Pipeline Phases</div>
+      </div>
+      <div style="background:#111827; border-radius:10px; padding:16px; text-align:center; border:1px solid #1e2a40;">
+        <div style="font-size:32px; font-weight:800; color:#a78bfa;">8</div>
+        <div style="font-size:11px; color:#5a6a88; margin-top:4px;">Output Deliverable Types</div>
+      </div>
+      <div style="background:#111827; border-radius:10px; padding:16px; text-align:center; border:1px solid #1e2a40;">
+        <div style="font-size:32px; font-weight:800; color:#f472b6;">6</div>
+        <div style="font-size:11px; color:#5a6a88; margin-top:4px;">Publish Targets</div>
+      </div>
+      <div style="background:#111827; border-radius:10px; padding:16px; text-align:center; border:1px solid #1e2a40;">
+        <div style="font-size:32px; font-weight:800; color:#fbbf24;">1</div>
+        <div style="font-size:11px; color:#5a6a88; margin-top:4px;">Master Orchestrator</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center; padding:24px 0 8px; font-size:11px; color:#2a3a5c;">
+    EduForge AI · Multi-Agent Content System · Built with Claude
+  </div>
+
+</div><!-- /canvas -->
+
+</body>
+</html>
