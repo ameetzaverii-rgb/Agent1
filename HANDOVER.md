@@ -1,5 +1,25 @@
 # Handover — EduForge Multi-Agent Content Development System
 
+## Update (2026-07-20) — added a working single agent
+
+Added `english_master_agent/`: a standalone, single-agent (not multi-agent)
+English teacher, "Professor Lex". Unlike `content_agent_system.html` below,
+this one is actually runnable, not just a diagram:
+
+- `system_prompt.md` — the full teaching persona/instructions (conversational
+  practice, grammar & writing feedback, curriculum/lesson generation, exam
+  prep for IELTS/TOEFL/Cambridge), with CEFR-level calibration.
+- `agent.py` — a CLI chat loop using the Anthropic Python SDK
+  (`client.messages.stream`) that loads the system prompt and holds a
+  running conversation.
+- `requirements.txt`, `README.md` — setup/run instructions.
+
+Run with `pip install -r english_master_agent/requirements.txt`,
+`export ANTHROPIC_API_KEY=...`, `python english_master_agent/agent.py`.
+
+Not yet done: no automated tests, no web UI, no persistence of conversation
+history across sessions, no evaluation harness for teaching quality.
+
 ## Current state (as of 2026-07-10)
 
 This repo contains a single deliverable: `content_agent_system.html`, a static,
